@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Mini Proxy Browser</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    #bar {
+      background: #222;
+      color: white;
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+    }
+    #url {
+      flex: 1;
+      padding: 6px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+    }
+    #go {
+      padding: 6px 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    iframe {
+      width: 100%;
+      height: calc(100vh - 50px);
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <input id="url" placeholder="Enter URL or search term">
+    <button id="go">Go</button>
+  </div>
+  <iframe id="view"></iframe>
+
+  <script>
+    function normalize(input) {
+      // If it's not a URL, treat it as a Google search
+      if (!input.startsWith("http")) {
+        return "https://www.google.com/search?q=" + encodeURIComponent(input);
+      }
+      return input;
+    }
+
+    function load() {
+      const input = document.getElementById("url").value.trim();
+      if (!input) return;
+      const target = normalize(input);
+      document.getElementById("view").src = "/proxy?url=" + encodeURIComponent(target);
+    }
+
+    document.getElementById("go").onclick = load;
+    document.getElementById("url").addEventListener("keydown", e => {
+      if (e.key === "Enter") load();
+    });
+  </script>
+</body>
+</html>
