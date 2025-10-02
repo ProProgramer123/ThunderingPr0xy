@@ -1,15 +1,19 @@
 // server.js
-const express = require("express");
-const fetch = require("node-fetch"); // For Node <18
-const path = require("path");
+import express from "express";
+import fetch from "node-fetch"; // For Node <18, otherwise native fetch works
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Serve static files (like index.html, css, js)
+// Serve static files (like index.html)
 app.use(express.static(path.join(__dirname, "public")));
 
-// Route: root → serve index.html (your search bar page)
+// Root route → serve index.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
@@ -24,7 +28,6 @@ app.get("/proxy", async (req, res) => {
     const contentType = response.headers.get("content-type") || "text/html";
     res.set("Content-Type", contentType);
 
-    // If HTML, send as text; otherwise stream raw body
     if (contentType.includes("text/html")) {
       const body = await response.text();
       res.send(body);
@@ -37,7 +40,6 @@ app.get("/proxy", async (req, res) => {
   }
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
