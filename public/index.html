@@ -5,22 +5,28 @@
   <title>Proxy Browser</title>
   <style>
     body { margin: 0; font-family: sans-serif; }
-    #bar { background: #222; color: white; padding: 10px; display: flex; gap: 10px; }
+    #bar { background: #222; color: white; padding: 10px; display: flex; gap: 10px; align-items: center; }
     #url { flex: 1; padding: 6px; font-size: 16px; border-radius: 5px; border: none; }
-    #go { padding: 6px 12px; font-size: 16px; border: none; border-radius: 5px; background: #4CAF50; color: white; cursor: pointer; }
-    #view { width: 100%; height: calc(100vh - 50px); border: none; background: white; }
+    #go, #minimize { padding: 6px 12px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; }
+    #go { background: #4CAF50; color: white; }
+    #minimize { background: #555; color: white; }
+    #view { width: 100%; height: calc(100vh - 50px); border: none; background: white; transition: height 0.3s ease; }
+    .minimized #view { height: 0; }
   </style>
 </head>
 <body>
   <div id="bar">
     <input id="url" placeholder="Enter URL or search term">
     <button id="go">Go</button>
+    <button id="minimize">–</button>
   </div>
   <iframe id="view"></iframe>
 
   <script>
     const view = document.getElementById("view");
     const input = document.getElementById("url");
+    const minimizeBtn = document.getElementById("minimize");
+    let minimized = false;
 
     function normalize(input) {
       if (!input.startsWith("http")) {
@@ -37,6 +43,17 @@
 
     document.getElementById("go").onclick = () => load(input.value);
     input.addEventListener("keydown", e => { if (e.key === "Enter") load(input.value); });
+
+    minimizeBtn.onclick = () => {
+      minimized = !minimized;
+      if (minimized) {
+        document.body.classList.add("minimized");
+        minimizeBtn.textContent = "+";
+      } else {
+        document.body.classList.remove("minimized");
+        minimizeBtn.textContent = "–";
+      }
+    };
 
     // Start at DuckDuckGo
     load("https://duckduckgo.com");
