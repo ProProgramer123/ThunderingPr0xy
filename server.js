@@ -1,8 +1,8 @@
 // server.js
 import express from "express";
-import fetch from "node-fetch"; // For Node <18, otherwise native fetch works
 import path from "path";
 import { fileURLToPath } from "url";
+import { JSDOM } from "jsdom";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,13 +10,23 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Serve static files (like index.html)
+// Serve static files
 app.use(express.static(path.join(__dirname, "public")));
 
-// Root route → serve index.html
+// Serve index.html at root
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
+
+// Helper to make URLs go through the proxy
+function proxify(url, base) {
+  try {
+    const u = new URL(url, base);
+    return "/proxy?url=" + encodeURIComponent(u.toString());
+  } catch {
+    return url;
+  }
+}
 
 // Proxy route
 app.get("/proxy", async (req, res) => {
@@ -29,17 +39,35 @@ app.get("/proxy", async (req, res) => {
     res.set("Content-Type", contentType);
 
     if (contentType.includes("text/html")) {
-      const body = await response.text();
-      res.send(body);
+      const text = await response.text();
+      const dom = new JSDOM(text);
+      const doc = dom.window.document;
+
+      // Rewrite assets
+      doc.querySelectorAll("[src]").forEach(el => {
+        el.src = proxify(el.getAttribute("src"), targetUrl);
+      });
+      doc.querySelectorAll("[href]").forEach(el => {
+        el.href = proxify(el.getAttribute("href"), targetUrl);
+      });
+      doc.querySelectorAll("form").forEach(el => {
+        const action = el.getAttribute("action") || "";
+        el.setAttribute("action", proxify(action, targetUrl));
+        if (!el.method || el.method.toLowerCase() !== "post") el.method = "get";
+      });
+
+      res.send(dom.serialize());
     } else {
-      response.body.pipe(res);
+      // Stream CSS, JS, images
+      const body = response.body;
+      body.pipe(res);
     }
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error fetching URL");
+    res.status(500).send("Proxy error");
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Proxy server running on http://localhost:${PORT}`);
 });
