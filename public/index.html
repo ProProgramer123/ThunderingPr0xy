@@ -5,28 +5,49 @@
   <title>Proxy Browser</title>
   <style>
     body { margin: 0; font-family: sans-serif; }
-    #bar { background: #222; color: white; padding: 10px; display: flex; gap: 10px; }
+    #bar {
+      background: #222; color: white;
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
     #url { flex: 1; padding: 6px; font-size: 16px; border-radius: 5px; border: none; }
-    #go { padding: 6px 12px; font-size: 16px; border: none; border-radius: 5px; background: #4CAF50; color: white; cursor: pointer; }
-    #view { width: 100%; height: calc(100vh - 50px); border: none; background: white; }
+    button { padding: 6px 12px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; }
+    #go { background: #4CAF50; color: white; }
+    #minimize { background: #555; color: white; }
+    #show-bar {
+      position: fixed;
+      top: 0; left: 0;
+      background: #222; color: white;
+      padding: 6px 10px;
+      display: none;
+      cursor: pointer;
+      z-index: 9999;
+    }
+    #view { width: 100%; height: calc(100vh - 50px); border: none; }
   </style>
 </head>
 <body>
   <div id="bar">
     <input id="url" placeholder="Enter URL or search term">
     <button id="go">Go</button>
+    <button id="minimize">–</button>
   </div>
+  <button id="show-bar">Show Search Bar</button>
   <iframe id="view"></iframe>
 
   <script>
     const view = document.getElementById("view");
     const input = document.getElementById("url");
+    const bar = document.getElementById("bar");
+    const showBar = document.getElementById("show-bar");
 
-    function normalize(input) {
-      if (!input.startsWith("http")) {
-        return "https://duckduckgo.com/?q=" + encodeURIComponent(input);
+    function normalize(inputVal) {
+      if (!inputVal.startsWith("http")) {
+        return "https://duckduckgo.com/?q=" + encodeURIComponent(inputVal);
       }
-      return input;
+      return inputVal;
     }
 
     function load(url) {
@@ -37,6 +58,18 @@
 
     document.getElementById("go").onclick = () => load(input.value);
     input.addEventListener("keydown", e => { if (e.key === "Enter") load(input.value); });
+
+    document.getElementById("minimize").onclick = () => {
+      bar.style.display = "none";
+      showBar.style.display = "block";
+      view.style.height = "100vh";
+    };
+
+    showBar.onclick = () => {
+      bar.style.display = "flex";
+      showBar.style.display = "none";
+      view.style.height = "calc(100vh - 50px)";
+    };
 
     // Start at DuckDuckGo
     load("https://duckduckgo.com");

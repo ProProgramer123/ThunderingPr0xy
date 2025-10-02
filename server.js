@@ -1,3 +1,4 @@
+// server.js
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -9,12 +10,15 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Serve static files
 app.use(express.static(path.join(__dirname, "public")));
 
+// Serve index.html at root
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+// Helper to proxify URLs
 function proxify(url, base) {
   try {
     const u = new URL(url, base);
@@ -24,6 +28,7 @@ function proxify(url, base) {
   }
 }
 
+// Proxy route
 app.get("/proxy", async (req, res) => {
   const targetUrl = req.query.url;
   if (!targetUrl) return res.status(400).send("Missing URL");
@@ -45,7 +50,7 @@ app.get("/proxy", async (req, res) => {
       const dom = new JSDOM(html);
       const doc = dom.window.document;
 
-      // Rewrite assets
+      // Rewrite src/href/form for assets
       doc.querySelectorAll("[src]").forEach(el => {
         const src = el.getAttribute("src");
         if (src) el.src = proxify(src, targetUrl);
@@ -62,8 +67,9 @@ app.get("/proxy", async (req, res) => {
 
       res.send(dom.serialize());
     } else {
-      // Stream fonts, JS, images, CSS
-      response.body.pipe(res);
+      // Non-HTML: convert to buffer
+      const buffer = Buffer.from(await response.arrayBuffer());
+      res.send(buffer);
     }
   } catch (err) {
     console.error("Proxy error:", err.message);
@@ -72,5 +78,5 @@ app.get("/proxy", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Proxy server running on http://localhost:${PORT}`);
+  console.log(`Proxy browser running on http://localhost:${PORT}`);
 });
