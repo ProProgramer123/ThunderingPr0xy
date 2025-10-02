@@ -4,69 +4,23 @@
   <meta charset="UTF-8">
   <title>Proxy Browser</title>
   <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-    #bar {
-      background: #111;
-      color: white;
-      padding: 8px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-shrink: 0;
-    }
-    #url {
-      flex: 1;
-      padding: 8px 10px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: 1px solid #555;
-      outline: none;
-      color: black;
-    }
-    #go, #minimize, #restore {
-      padding: 8px 14px;
-      font-size: 16px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    #go { background: #4CAF50; color: white; }
-    #minimize { background: #555; color: white; }
-    #restore {
-      background: #111;
-      color: white;
-      display: none;
-      width: 100%;
-      text-align: left;
-    }
-    #view {
-      flex: 1;
-      width: 100%;
-      border: none;
-      background: white;
-    }
+    body { margin: 0; font-family: sans-serif; }
+    #bar { background: #222; color: white; padding: 10px; display: flex; gap: 10px; }
+    #url { flex: 1; padding: 6px; font-size: 16px; border-radius: 5px; border: none; }
+    #go { padding: 6px 12px; font-size: 16px; border: none; border-radius: 5px; background: #4CAF50; color: white; cursor: pointer; }
+    #view { width: 100%; height: calc(100vh - 50px); border: none; background: white; }
   </style>
 </head>
 <body>
   <div id="bar">
-    <input id="url" placeholder="🔎 Enter URL or search term...">
+    <input id="url" placeholder="Enter URL or search term">
     <button id="go">Go</button>
-    <button id="minimize">–</button>
   </div>
-  <button id="restore">▼ Show Search Bar</button>
   <iframe id="view"></iframe>
 
   <script>
     const view = document.getElementById("view");
     const input = document.getElementById("url");
-    const minimizeBtn = document.getElementById("minimize");
-    const restoreBtn = document.getElementById("restore");
 
     function normalize(input) {
       if (!input.startsWith("http")) {
@@ -82,19 +36,7 @@
     }
 
     document.getElementById("go").onclick = () => load(input.value);
-    input.addEventListener("keydown", e => {
-      if (e.key === "Enter") load(input.value);
-    });
-
-    minimizeBtn.onclick = () => {
-      document.getElementById("bar").style.display = "none";
-      restoreBtn.style.display = "block";
-    };
-
-    restoreBtn.onclick = () => {
-      document.getElementById("bar").style.display = "flex";
-      restoreBtn.style.display = "none";
-    };
+    input.addEventListener("keydown", e => { if (e.key === "Enter") load(input.value); });
 
     // Start at DuckDuckGo
     load("https://duckduckgo.com");
