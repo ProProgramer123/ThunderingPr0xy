@@ -1,87 +1,43 @@
 // server.js
-import express from "express";
-import fetch from "node-fetch";
-import { JSDOM } from "jsdom";
+const express = require("express");
+const fetch = require("node-fetch"); // For Node <18
+const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Default starting site
-let currentBase = "https://duckduckgo.com";
+// Serve static files (like index.html, css, js)
+app.use(express.static(path.join(__dirname, "public")));
 
-// Helper: turn a normal URL into a proxied one
-function proxify(url, base) {
-  try {
-    const u = new URL(url, base);
-    return "/proxy?url=" + encodeURIComponent(u.toString());
-  } catch {
-    return url;
-  }
-}
+// Route: root → serve index.html (your search bar page)
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
-// Core proxy handler
-async function handleProxy(target, res) {
-  const upstream = await fetch(target, { redirect: "follow" });
-  const contentType = upstream.headers.get("content-type") || "";
-
-  if (contentType.includes("text/html")) {
-    const text = await upstream.text();
-    const dom = new JSDOM(text);
-    const doc = dom.window.document;
-
-    // Rewrite asset URLs
-    doc.querySelectorAll("[src]").forEach(el => {
-      el.src = proxify(el.getAttribute("src"), target);
-    });
-    doc.querySelectorAll("[href]").forEach(el => {
-      el.href = proxify(el.getAttribute("href"), target);
-    });
-
-    // Rewrite forms (fix search engines!)
-    doc.querySelectorAll("form").forEach(el => {
-      const action = el.getAttribute("action") || "";
-      el.setAttribute("action", proxify(action, target));
-
-      // Make sure GET is default for searches
-      if (!el.method || el.method.toLowerCase() !== "post") {
-        el.method = "get";
-      }
-    });
-
-    res.set("Content-Type", "text/html");
-    res.send(dom.serialize());
-  } else {
-    // Pass through non-HTML files (images, JS, CSS, etc.)
-    res.set("Content-Type", contentType);
-    upstream.body.pipe(res);
-  }
-}
-
-// Explicit /proxy endpoint
+// Proxy route
 app.get("/proxy", async (req, res) => {
-  const target = req.query.url;
-  if (!target) return res.status(400).send("Missing url parameter");
+  const targetUrl = req.query.url;
+  if (!targetUrl) return res.status(400).send("Missing URL");
 
   try {
-    currentBase = target;
-    await handleProxy(target, res);
+    const response = await fetch(targetUrl, { redirect: "follow" });
+    const contentType = response.headers.get("content-type") || "text/html";
+    res.set("Content-Type", contentType);
+
+    // If HTML, send as text; otherwise stream raw body
+    if (contentType.includes("text/html")) {
+      const body = await response.text();
+      res.send(body);
+    } else {
+      response.body.pipe(res);
+    }
   } catch (err) {
     console.error(err);
-    res.status(502).send("Proxy error");
+    res.status(500).send("Error fetching URL");
   }
 });
 
-// Catch-all: treat any other path as relative to current site
-app.get("*", async (req, res) => {
-  try {
-    const target = new URL(req.originalUrl, currentBase).toString();
-    await handleProxy(target, res);
-  } catch (err) {
-    console.error(err);
-    res.status(502).send("Proxy error");
-  }
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
-
-app.listen(PORT, () =>
-  console.log(`✅ Proxy browser running on http://localhost:${PORT}`)
-);
