@@ -2,7 +2,7 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { JSDOM } from "jsdom";
+import fetch from "node-fetch"; // Install: npm install node-fetch@3
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Serve static files
+// Serve static files from 'public'
 app.use(express.static(path.join(__dirname, "public")));
 
 // Serve index.html at root
@@ -18,7 +18,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Helper to proxify URLs
+// Helper to proxify URLs for assets
 function proxify(url, base) {
   try {
     const u = new URL(url, base);
@@ -35,48 +35,33 @@ app.get("/proxy", async (req, res) => {
 
   try {
     const response = await fetch(targetUrl, {
-      redirect: "follow",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        "Accept": "*/*"
-      }
+      headers: { "User-Agent": "Mozilla/5.0" },
+      redirect: "follow"
     });
 
-    const contentType = response.headers.get("content-type") || "text/html";
+    const contentType = response.headers.get("content-type") || "";
     res.set("Content-Type", contentType);
 
     if (contentType.includes("text/html")) {
       const html = await response.text();
-      const dom = new JSDOM(html);
-      const doc = dom.window.document;
 
-      // Rewrite src/href/form for assets
-      doc.querySelectorAll("[src]").forEach(el => {
-        const src = el.getAttribute("src");
-        if (src) el.src = proxify(src, targetUrl);
-      });
-      doc.querySelectorAll("[href]").forEach(el => {
-        const href = el.getAttribute("href");
-        if (href) el.href = proxify(href, targetUrl);
-      });
-      doc.querySelectorAll("form").forEach(el => {
-        const action = el.getAttribute("action") || "";
-        el.setAttribute("action", proxify(action, targetUrl));
-        if (!el.method || el.method.toLowerCase() !== "post") el.method = "get";
-      });
+      // Rewrite HTML to proxy asset URLs
+      const proxiedHtml = html
+        .replace(/(src|href)="([^"]+)"/g, (_, attr, url) => `${attr}="${proxify(url, targetUrl)}"`)
+        .replace(/action="([^"]*)"/g, (_, url) => `action="${proxify(url, targetUrl)}"`);
 
-      res.send(dom.serialize());
+      res.send(proxiedHtml);
     } else {
-      // Non-HTML: convert to buffer
+      // For CSS, JS, images, fonts, etc.
       const buffer = Buffer.from(await response.arrayBuffer());
       res.send(buffer);
     }
   } catch (err) {
-    console.error("Proxy error:", err.message);
+    console.error("Proxy fetch error:", err.message);
     res.status(500).send("Proxy fetch failed");
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Proxy browser running on http://localhost:${PORT}`);
+  console.log(`Proxy browser running on port ${PORT}`);
 });
